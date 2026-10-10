@@ -44,18 +44,30 @@
           <div id="p1card" class="player-card active"><span class="avatar">🌙</span><div><b id="p1name">ผู้เล่น 1</b><small id="p1status">เจ้าของห้อง</small></div></div>
           <div id="p2card" class="player-card"><span class="avatar">⭐</span><div><b id="p2name">ผู้เล่น 2</b><small id="p2status">กำลังรอเพื่อนเข้าห้อง</small></div></div>
         </div>
-        <div class="mode">
-          <label for="modeSelect">โหมดเกม</label>
-          <select id="modeSelect"><option>แต่งเรื่องต่อกัน</option><option>ถามตอบรู้ใจ</option><option>ภารกิจคู่รัก</option></select>
+        <div class="game-settings">
+          <div class="mode">
+            <label for="modeSelect">🎮 โหมดเกม</label>
+            <select id="modeSelect">
+              <option>แต่งเรื่องต่อกัน</option><option>ถามตอบรู้ใจ</option><option>ภารกิจคู่รัก</option>
+              <option>ทายใจอีกฝ่าย</option><option>เมาท์มอยไม่พัก</option><option>เลือกอะไรดี?</option>
+            </select>
+          </div>
+          <div class="mode">
+            <label for="styleSelect">🎨 สไตล์การเล่น</label>
+            <select id="styleSelect">
+              <option>สายฮา</option><option>สายหวาน</option><option>สายโรแมนติก</option><option>สุ่มเซอร์ไพรส์</option>
+            </select>
+          </div>
+          <p class="tiny">คนสร้างห้องเป็นคนเลือก และทั้งสองคนจะเห็นตัวเลือกเดียวกัน 💗</p>
         </div>
         <div id="turnBanner" class="turn-banner">กำลังเชื่อมต่อห้อง…</div>
       </div>
       <div class="panel">
-        <div class="story-head"><h3>เรื่องราวของเรา ✍️</h3><span id="count" class="pill">0 ข้อความ</span></div>
+        <div class="story-head"><h3 id="feedTitle">เรื่องราวของเรา ✍️</h3><span id="count" class="pill">0 ข้อความ</span></div>
         <div id="story" class="story"><div class="empty">เมื่อเริ่มแต่งเรื่อง ข้อความของเราจะอยู่ตรงนี้ 💫</div></div>
-        <label for="draft">เขียนต่อจากเรื่องราว</label>
-        <textarea id="draft" rows="3" maxlength="1200" placeholder="พิมพ์เรื่องราวของคุณตรงนี้…"></textarea>
-        <button id="sendBtn" class="primary full" disabled>ส่งข้อความและส่งตา 💌</button>
+        <label id="draftLabel" for="draft">เขียนต่อจากเรื่องราว</label>
+        <textarea id="draft" rows="3" maxlength="500" placeholder="พิมพ์เรื่องราวของคุณตรงนี้…"></textarea>
+        <div class="draft-actions"><button id="promptBtn" class="secondary" type="button">🎲 สุ่มหัวข้อช่วยคิด</button><button id="sendBtn" class="primary" disabled>ส่งข้อความและส่งตา 💌</button></div>
         <p id="roomMsg" class="message" aria-live="polite"></p>
       </div>
       <button id="leaveBtn" class="link-button">ออกจากหน้าห้อง</button>
