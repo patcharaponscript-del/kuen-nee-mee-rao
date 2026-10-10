@@ -40,23 +40,65 @@
     "เลือกอะไรดี?":{title:"เลือกอะไรดี? ⚖️",label:"ตัวเลือกของเรา",placeholder:"เลือกหนึ่งอย่างจากหัวข้อ แล้วบอกเหตุผล…",button:"ล็อกคำตอบและส่งตา 💌",banner:"เลือกคำตอบของตัวเอง แล้วมาดูว่าใจตรงกันไหม! ⚖️"}
   })[state.mode]||{title:"เล่นด้วยกัน 💗",label:"พิมพ์คำตอบ",placeholder:"พิมพ์ข้อความตรงนี้…",button:"ส่งข้อความ 💌",banner:"ถึงตาของนายแล้ว 💗"};}
   function applyRoom(room){state.room=room;state.turn=room.turn_player||1;unpackSettings(room.mode);state.p1=room.player1_name||"ผู้เล่น 1";state.p2=room.player2_name||"ผู้เล่น 2";state.joined=!!room.player2_token_hash||!!room.player2_name;state.story=Array.isArray(room.story)?room.story:[];render();}
+  function guessState(){
+    const entries=state.story.filter(x=>typeof x.text==="string" && /^(🔮 คำถาม:|💭 คำตอบ:|✅ ตัดสิน:|🙈 ตัดสิน:)/.test(x.text));
+    const last=entries[entries.length-1];
+    const scores=[0,0];
+    entries.forEach((x,i)=>{if(x.text.startsWith("✅ ตัดสิน:")){const answer=[...entries.slice(0,i)].reverse().find(y=>y.text.startsWith("💭 คำตอบ:"));if(answer)scores[answer.player===1?0:1]++;}});
+    let phase="question";
+    if(last?.text.startsWith("🔮 คำถาม:"))phase="answer";
+    else if(last?.text.startsWith("💭 คำตอบ:"))phase="judge";
+    else if(last?.text.startsWith("✅ ตัดสิน:")||last?.text.startsWith("🙈 ตัดสิน:"))phase="question";
+    return {phase,scores,last};
+  }
   function render(){
     $("roomCode").textContent=state.room?.code||"——";$("p1name").textContent=state.p1;$("p2name").textContent=state.p2;$("p2status").textContent=state.joined?"เข้าร่วมห้องแล้ว 💗":"กำลังรอเพื่อนเข้าห้อง";
     $("p1card").classList.toggle("active",state.turn===1);$("p2card").classList.toggle("active",state.turn===2);$("count").textContent=`${state.story.length} ข้อความ`;
     const story=$("story");story.replaceChildren();if(!state.story.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=`เริ่มเล่นโหมด${state.mode} สไตล์${state.style} แล้วข้อความจะอยู่ตรงนี้ 💫`;story.append(empty);}else state.story.forEach(item=>{const bubble=document.createElement("div");bubble.className="bubble"+(item.player===2?" p2":"");const who=document.createElement("span");who.className="who";who.textContent=item.player===1?state.p1:state.p2;const body=document.createElement("span");body.textContent=item.text;bubble.append(who,body);story.append(bubble);});story.scrollTop=story.scrollHeight;
-    const c=modeCopy(),isMyTurn=state.player===state.turn;let banner=!state.joined&&state.player===1?"สร้างห้องแล้ว 💗 ส่งรหัสให้แฟนเข้าร่วมก่อนเริ่มเล่น":!isMyTurn?(state.turn===1?`รอ ${state.p1} เล่นก่อน…`:`รอ ${state.p2} เล่นก่อน…`):c.banner;
+    const c=modeCopy(),isMyTurn=state.player===state.turn;
+    const guess=guessState(),isGuess=state.mode==="ทายใจอีกฝ่าย";
+    $("guessPanel").classList.toggle("hidden",!isGuess);
+    $("score1").textContent=String(guess.scores[0]);$("score2").textContent=String(guess.scores[1]);
+    const judging=isGuess&&guess.phase==="judge"&&isMyTurn&&state.joined;
+    $("correctBtn").classList.toggle("hidden",!judging);$("wrongBtn").classList.toggle("hidden",!judging);
+    let banner=!state.joined&&state.player===1?"สร้างห้องแล้ว 💗 ส่งรหัสให้แฟนเข้าร่วมก่อนเริ่มเล่น":!isMyTurn?(state.turn===1?`รอ ${state.p1} เล่นก่อน…`:`รอ ${state.p2} เล่นก่อน…`):c.banner;
     say("turnBanner",banner);say("feedTitle",c.title);say("draftLabel",c.label);$("draft").placeholder=c.placeholder;$("sendBtn").textContent=c.button;
-    $("draft").disabled=!isMyTurn||!state.joined;$("sendBtn").disabled=!isMyTurn||!state.joined||!$("draft").value.trim();$("promptBtn").disabled=!isMyTurn||!state.joined;
+    const answerPhase=isGuess&&guess.phase==="answer";
+    $("draft").disabled=!isMyTurn||!state.joined||judging;
+    $("sendBtn").disabled=!isMyTurn||!state.joined||!$("draft").value.trim()||judging;
+    $("promptBtn").disabled=!isMyTurn||!state.joined||judging;
+    if(isGuess){
+      if(guess.phase==="question"){$("draftLabel").textContent="ตั้งคำถามให้เพื่อนทาย";$("draft").placeholder="พิมพ์คำถามที่อีกฝ่ายต้องทาย…";$("sendBtn").textContent="ส่งคำถาม 🔮";}
+      else if(answerPhase){$("draftLabel").textContent="คำทายของเรา";$("draft").placeholder="ลองทายคำตอบของอีกฝ่าย…";$("sendBtn").textContent="ส่งคำทาย 💭";}
+      else {$("draftLabel").textContent="รอผู้ตั้งคำถามตัดสิน";$("draft").placeholder="อีกฝ่ายกำลังตัดสินคำตอบ…";$("sendBtn").textContent="รอผลตัดสิน";}
+      $("guessHint").textContent=guess.phase==="question"?"ตั้งคำถามก่อน แล้วให้อีกฝ่ายทายคำตอบ":guess.phase==="answer"?"ถึงตาของอีกฝ่ายลองทายใจคุณ":"คนตั้งคำถามเลือกว่าถูกหรือยังไม่ถูกได้เลย";
+    }
     $("modeSelect").value=state.mode;$("styleSelect").value=state.style;$("modeSelect").disabled=state.player!==1;$("styleSelect").disabled=state.player!==1;
+    document.querySelectorAll(".mode-card").forEach(card=>{card.classList.toggle("selected",card.dataset.mode===state.mode);card.disabled=state.player!==1;});
+    $("randomModeBtn").disabled=state.player!==1;
     document.body.dataset.style=state.style;
   }
   async function refreshRoom(silent=true){if(!state.room||!state.token)return;try{const data=await api("get");applyRoom(data.room);}catch(e){if(!silent)setMessage(errorText(e.message));}}
   function startPolling(){if(state.pollTimer)clearInterval(state.pollTimer);state.pollTimer=setInterval(()=>refreshRoom(true),1800);}
   async function createRoom(){if(!configReady()){say("setupMsg","ยังตั้งค่าการเชื่อมต่อไม่ครบ");return;}state.nickname=$("nickname").value.trim()||"ผู้เล่น 1";try{const data=await api("create",{name:state.nickname,mode:packSettings(MODES[0],STYLES[0])});state.player=data.player;state.token=data.token;applyRoom(data.room);saveSession();showRoom();startPolling();history.replaceState({},"","?room="+state.room.code);setMessage("ส่งรหัส "+state.room.code+" ให้แฟนเพื่อเข้าห้องได้เลย");}catch(e){say("setupMsg",errorText(e.message));}}
   async function joinRoom(){if(!configReady()){say("setupMsg","ยังตั้งค่าการเชื่อมต่อไม่ครบ");return;}const roomCode=$("roomInput").value.trim().toUpperCase()||new URLSearchParams(location.search).get("room")?.toUpperCase();if(!roomCode){say("setupMsg","ใส่รหัสห้องก่อนนะ");return;}state.nickname=$("nickname").value.trim()||"ผู้เล่น 2";try{const data=await api("join",{code:roomCode,name:state.nickname});state.player=data.player;state.token=data.token;applyRoom(data.room);saveSession();showRoom();startPolling();history.replaceState({},"","?room="+roomCode);}catch(e){say("setupMsg",errorText(e.message));}}
-  async function sendStory(){const text=$("draft").value.trim();if(!text||state.player!==state.turn||!state.joined)return;try{const data=await api("send",{text});$("draft").value="";applyRoom(data.room);setMessage("ส่งแล้ว ถึงตาอีกฝ่ายต่อเลย 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}}
+  async function sendStory(){let text=$("draft").value.trim();if(!text||state.player!==state.turn||!state.joined)return;
+    if(state.mode==="ทายใจอีกฝ่าย"){
+      const gs=guessState();
+      if(gs.phase==="judge"){setMessage("ผู้ตั้งคำถามต้องตัดสินก่อนนะ");return;}
+      text=gs.phase==="answer"?"💭 คำตอบ: "+text:"🔮 คำถาม: "+text;
+    }
+    try{const data=await api("send",{text});$("draft").value="";applyRoom(data.room);setMessage("ส่งแล้ว ถึงตาอีกฝ่ายต่อเลย 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}}
+  async function judgeGuess(correct){
+    if(state.mode!=="ทายใจอีกฝ่าย"||state.player!==state.turn||!state.joined||guessState().phase!=="judge")return;
+    const text=correct?"✅ ตัดสิน: ถูก! +1 คะแนน 💗":"🙈 ตัดสิน: ยังไม่ถูก รอบหน้าลองใหม่ได้";
+    try{const data=await api("send",{text});applyRoom(data.room);setMessage(correct?"บันทึกคะแนนให้คนทายแล้ว 💗":"บันทึกผลแล้ว ไปคำถามต่อไปกัน 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}
+  }
   async function changeSettings(){if(!state.room||state.player!==1)return;state.mode=$("modeSelect").value;state.style=$("styleSelect").value;render();try{const data=await api("mode",{mode:packSettings()});applyRoom(data.room);setMessage("เปลี่ยนโหมดและสไตล์แล้ว ทั้งคู่เห็นเหมือนกัน 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}}
+  $("correctBtn").addEventListener("click",()=>judgeGuess(true));$("wrongBtn").addEventListener("click",()=>judgeGuess(false));
   $("createBtn").addEventListener("click",createRoom);$("joinBtn").addEventListener("click",joinRoom);$("sendBtn").addEventListener("click",sendStory);$("draft").addEventListener("input",render);$("modeSelect").addEventListener("change",changeSettings);$("styleSelect").addEventListener("change",changeSettings);
+  document.querySelectorAll(".mode-card").forEach(card=>card.addEventListener("click",()=>{if(state.player!==1)return;$("modeSelect").value=card.dataset.mode;changeSettings();}));
+  $("randomModeBtn").addEventListener("click",()=>{if(state.player!==1)return;const choices=MODES.filter(m=>m!==state.mode);$("modeSelect").value=choices[Math.floor(Math.random()*choices.length)];changeSettings();});
   $("promptBtn").addEventListener("click",()=>{const pool=prompts();$("draft").value=pool[Math.floor(Math.random()*pool.length)];render();$("draft").focus();});
   $("copyBtn").addEventListener("click",async()=>{const url=location.origin+location.pathname+"?room="+state.room.code;try{await navigator.clipboard.writeText(url);setMessage("คัดลอกลิงก์แล้ว ส่งให้แฟนได้เลย 💌");}catch{setMessage("ลิงก์ห้อง: "+url);}});
   $("leaveBtn").addEventListener("click",()=>{if(state.pollTimer)clearInterval(state.pollTimer);state.pollTimer=null;state.room=null;state.token=null;state.player=null;clearSession();roomView.classList.add("hidden");setup.classList.remove("hidden");history.replaceState({},"",location.pathname);});

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#11152c">
+  <meta name="theme-color" content="#fff0f7">
   <meta name="description" content="คืนนี้มีเรา — เกมแต่งเรื่องและเล่นด้วยกันสองคน">
   <title>คืนนี้มีเรา 💗</title>
   <link rel="stylesheet" href="style.css">
@@ -45,12 +45,17 @@
           <div id="p2card" class="player-card"><span class="avatar">⭐</span><div><b id="p2name">ผู้เล่น 2</b><small id="p2status">กำลังรอเพื่อนเข้าห้อง</small></div></div>
         </div>
         <div class="game-settings">
-          <div class="mode">
-            <label for="modeSelect">🎮 โหมดเกม</label>
-            <select id="modeSelect">
-              <option>แต่งเรื่องต่อกัน</option><option>ถามตอบรู้ใจ</option><option>ภารกิจคู่รัก</option>
-              <option>ทายใจอีกฝ่าย</option><option>เมาท์มอยไม่พัก</option><option>เลือกอะไรดี?</option>
-            </select>
+          <div class="mode mode-picker">
+            <div class="picker-heading"><label>🎮 เลือกโหมดที่อยากเล่น</label><button id="randomModeBtn" class="secondary small" type="button">🎲 สุ่มโหมด</button></div>
+            <div id="modeGrid" class="mode-grid" aria-label="เลือกโหมดเกม">
+              <button class="mode-card" data-mode="แต่งเรื่องต่อกัน" type="button"><span>📖</span><b>สร้างเรื่องด้วยกัน</b><small>ผลัดกันแต่งเรื่องทีละตา</small></button>
+              <button class="mode-card" data-mode="ทายใจอีกฝ่าย" type="button"><span>🔮</span><b>ทายใจแฟน</b><small>ลองเดาคำตอบของอีกฝ่าย</small></button>
+              <button class="mode-card" data-mode="ถามตอบรู้ใจ" type="button"><span>💬</span><b>ถามตอบรู้ใจ</b><small>คุยกันและรู้จักกันมากขึ้น</small></button>
+              <button class="mode-card" data-mode="ภารกิจคู่รัก" type="button"><span>🎯</span><b>สุ่มภารกิจ</b><small>ภารกิจสนุก ๆ ผ่านมือถือ</small></button>
+              <button class="mode-card" data-mode="เมาท์มอยไม่พัก" type="button"><span>🌙</span><b>คำถามลึกซึ้ง</b><small>คุยเรื่องใจแบบสบาย ๆ</small></button>
+              <button class="mode-card" data-mode="เลือกอะไรดี?" type="button"><span>🩷</span><b>เลือกอะไรดี?</b><small>เลือกหนึ่งในสองตัวเลือก</small></button>
+            </div>
+            <select id="modeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"><option>แต่งเรื่องต่อกัน</option><option>ถามตอบรู้ใจ</option><option>ภารกิจคู่รัก</option><option>ทายใจอีกฝ่าย</option><option>เมาท์มอยไม่พัก</option><option>เลือกอะไรดี?</option></select>
           </div>
           <div class="mode">
             <label for="styleSelect">🎨 สไตล์การเล่น</label>
@@ -61,6 +66,7 @@
           <p class="tiny">คนสร้างห้องเป็นคนเลือก และทั้งสองคนจะเห็นตัวเลือกเดียวกัน 💗</p>
         </div>
         <div id="turnBanner" class="turn-banner">กำลังเชื่อมต่อห้อง…</div>
+        <div id="guessPanel" class="guess-panel hidden" aria-live="polite"><div class="guess-score"><span>🌙 <b id="score1">0</b></span><span>⭐ <b id="score2">0</b></span></div><p id="guessHint">โหมดทายใจ: ตั้งคำถาม แล้วให้อีกฝ่ายลองทาย</p><div class="judge-actions"><button id="correctBtn" class="primary" type="button">ถูก! +1 💗</button><button id="wrongBtn" class="secondary" type="button">ยังไม่ถูก 🙈</button></div></div>
       </div>
       <div class="panel">
         <div class="story-head"><h3 id="feedTitle">เรื่องราวของเรา ✍️</h3><span id="count" class="pill">0 ข้อความ</span></div>
