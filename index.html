@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#11152c">
+  <meta name="description" content="คืนนี้มีเรา — เกมแต่งเรื่องและเล่นด้วยกันสองคน">
+  <title>คืนนี้มีเรา 💗</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="stars"></div>
+  <main class="app">
+    <header class="brand">
+      <div class="logo">♡</div>
+      <div><h1>คืนนี้มีเรา</h1><p>เรื่องราวเล็ก ๆ ของเราสองคน</p></div>
+      <span class="pill">PARTY</span>
+    </header>
+
+    <section id="setup" class="panel">
+      <div class="eyebrow">TWO HEARTS · ONE ROOM</div>
+      <h2>คืนนี้เล่นอะไรกันดี? 🌙</h2>
+      <p class="muted">สร้างห้องใหม่ หรือใส่รหัสเพื่อเข้าห้องของอีกคน</p>
+      <label for="nickname">ชื่อที่ใช้ในเกม</label>
+      <input id="nickname" maxlength="20" placeholder="เช่น คนเก่ง 💗" autocomplete="nickname">
+      <div class="actions">
+        <button id="createBtn" class="primary">สร้างห้องใหม่ ✨</button>
+      </div>
+      <div class="join">
+        <label for="roomInput">มีรหัสห้องแล้วใช่ไหม?</label>
+        <div class="inline"><input id="roomInput" maxlength="8" placeholder="ใส่รหัสห้อง"><button id="joinBtn" class="secondary">เข้าห้อง</button></div>
+      </div>
+      <p id="setupMsg" class="message" aria-live="polite"></p>
+      <p class="tiny">ต้องตั้งค่า Supabase ในไฟล์ config.js ก่อนใช้งานข้ามเครื่อง</p>
+    </section>
+
+    <section id="room" class="hidden">
+      <div class="panel room-head">
+        <div><div class="eyebrow">ห้องของเราสองคน</div><h2>รหัส <span id="roomCode">——</span></h2></div>
+        <button id="copyBtn" class="secondary small">คัดลอกลิงก์</button>
+      </div>
+      <div class="panel">
+        <div class="players">
+          <div id="p1card" class="player-card active"><span class="avatar">🌙</span><div><b id="p1name">ผู้เล่น 1</b><small id="p1status">เจ้าของห้อง</small></div></div>
+          <div id="p2card" class="player-card"><span class="avatar">⭐</span><div><b id="p2name">ผู้เล่น 2</b><small id="p2status">กำลังรอเพื่อนเข้าห้อง</small></div></div>
+        </div>
+        <div class="mode">
+          <label for="modeSelect">โหมดเกม</label>
+          <select id="modeSelect"><option>แต่งเรื่องต่อกัน</option><option>ถามตอบรู้ใจ</option><option>ภารกิจคู่รัก</option></select>
+        </div>
+        <div id="turnBanner" class="turn-banner">กำลังเชื่อมต่อห้อง…</div>
+      </div>
+      <div class="panel">
+        <div class="story-head"><h3>เรื่องราวของเรา ✍️</h3><span id="count" class="pill">0 ข้อความ</span></div>
+        <div id="story" class="story"><div class="empty">เมื่อเริ่มแต่งเรื่อง ข้อความของเราจะอยู่ตรงนี้ 💫</div></div>
+        <label for="draft">เขียนต่อจากเรื่องราว</label>
+        <textarea id="draft" rows="3" maxlength="1200" placeholder="พิมพ์เรื่องราวของคุณตรงนี้…"></textarea>
+        <button id="sendBtn" class="primary full" disabled>ส่งข้อความและส่งตา 💌</button>
+        <p id="roomMsg" class="message" aria-live="polite"></p>
+      </div>
+      <button id="leaveBtn" class="link-button">ออกจากหน้าห้อง</button>
+    </section>
+    <footer>ทำด้วยความตั้งใจเพื่อคนสองคน 💗</footer>
+  </main>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
