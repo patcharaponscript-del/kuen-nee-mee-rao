@@ -1,106 +1,567 @@
-/* คืนนี้มีเรา — six game modes + four shared styles */
+/* คืนนี้มีเรา — 10 เกม + สุ่มเกม + ห้องออนไลน์ */
 (() => {
+  "use strict";
   const $ = id => document.getElementById(id);
-  const MODES = ["แต่งเรื่องต่อกัน","ถามตอบรู้ใจ","ภารกิจคู่รัก","ทายใจอีกฝ่าย","เมาท์มอยไม่พัก","เลือกอะไรดี?"];
-  const STYLES = ["สายฮา","สายหวาน","สายโรแมนติก","สุ่มเซอร์ไพรส์"];
-  const state = {room:null,player:null,token:null,nickname:"",story:[],turn:1,mode:MODES[0],style:STYLES[0],p1:"ผู้เล่น 1",p2:"ผู้เล่น 2",joined:false,pollTimer:null};
-  const setup=$("setup"), roomView=$("room");
-  const say=(id,text)=>{const el=$(id);if(el)el.textContent=text;};
-  const configReady=()=>window.SUPABASE_URL&&window.SUPABASE_ANON_KEY&&window.ROOM_API_URL&&!window.SUPABASE_URL.includes("PASTE_");
-  const errorText=code=>({room_not_found:"ไม่พบห้องนี้ ลองตรวจรหัสอีกครั้งนะ",room_full:"ห้องนี้มีผู้เล่นครบ 2 คนแล้ว",not_authorized:"สิทธิ์เข้าห้องไม่ถูกต้อง ลองเข้าห้องใหม่อีกครั้ง",not_your_turn:"ยังไม่ถึงตาของนาย ลองรอสักครู่นะ",waiting_for_player_two:"รอให้ผู้เล่นคนที่ 2 เข้าห้องก่อนนะ",message_length:"ข้อความต้องมี 1–500 ตัวอักษร",only_host_can_change_mode:"เฉพาะคนสร้างห้องเท่านั้นที่เปลี่ยนโหมดหรือสไตล์ได้",server_error:"เซิร์ฟเวอร์มีปัญหาชั่วคราว ลองอีกครั้งนะ"}[code]||code||"เกิดข้อผิดพลาด ลองอีกครั้งนะ");
-  function packSettings(mode=state.mode,style=state.style){return `${mode} • ${style}`.slice(0,60)};
-  function unpackSettings(value){const parts=String(value||"").split(" • ");state.mode=MODES.includes(parts[0])?parts[0]:MODES[0];state.style=STYLES.includes(parts[1])?parts[1]:STYLES[0];}
-  async function api(action,extra={}){if(!configReady())throw new Error("ยังตั้งค่าการเชื่อมต่อไม่ครบ");const res=await fetch(window.ROOM_API_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":window.SUPABASE_ANON_KEY,"Authorization":"Bearer "+window.SUPABASE_ANON_KEY},body:JSON.stringify({action,code:state.room?.code,player:state.player,token:state.token,...extra})});const data=await res.json().catch(()=>({error:"server_error"}));if(!res.ok)throw new Error(data.error||"server_error");return data;}
-  function setMessage(text,target="roomMsg"){say(target,text);}
-  function showRoom(){setup.classList.add("hidden");roomView.classList.remove("hidden");}
-  function saveSession(){try{sessionStorage.setItem("knmr_room",state.room.code);sessionStorage.setItem("knmr_player",String(state.player));sessionStorage.setItem("knmr_token",state.token);}catch{}}
-  function clearSession(){try{sessionStorage.removeItem("knmr_room");sessionStorage.removeItem("knmr_player");sessionStorage.removeItem("knmr_token");}catch{}}
-  function prompts(){
-    const pools={
-      "แต่งเรื่องต่อกัน":["จู่ ๆ ก็มีจดหมายปริศนาส่งมาถึงเรา…","คืนนั้นเราเห็นดาวตก แล้วมีเรื่องมหัศจรรย์เกิดขึ้น…","ถ้าเราได้ออกเดินทางด้วยกัน เรื่องเริ่มต้นที่…"],
-      "ถามตอบรู้ใจ":["ช่วงนี้อะไรทำให้ยิ้มได้ง่ายที่สุด?","ถ้าเลือกวันพักผ่อนได้หนึ่งวัน อยากทำอะไร?","มีเรื่องเล็ก ๆ อะไรที่อยากให้อีกฝ่ายรู้ไหม?"],
-      "ภารกิจคู่รัก":["ส่งอีโมจิ 3 ตัวที่อธิบายอีกฝ่ายได้ดีที่สุด","ตั้งฉายาใหม่ให้อีกฝ่าย 1 ชื่อ พร้อมเหตุผล","ชมอีกฝ่ายหนึ่งอย่างที่ไม่ค่อยได้พูด"],
-      "ทายใจอีกฝ่าย":["คิดว่าอีกฝ่ายอยากไปเที่ยวที่ไหนมากที่สุด?","เดาว่าอีกฝ่ายจะเลือกทะเลหรือภูเขา?","คิดว่าเมนูโปรดที่อีกฝ่ายกินได้บ่อย ๆ คืออะไร?"],
-      "เมาท์มอยไม่พัก":["ถ้าพรุ่งนี้ตื่นมาแล้วมีเงินเที่ยวได้ทันที จะไปไหน?","เรื่องเปิ่น ๆ ที่นึกถึงทีไรก็ขำคืออะไร?","ถ้าชีวิตเราเป็นหนัง ชื่อเรื่องจะชื่ออะไร?"],
-      "เลือกอะไรดี?":["ทะเล 🏖️ หรือภูเขา ⛰️? บอกเหตุผลด้วย","ดูหนัง 🎬 หรือเล่นเกม 🎮? ทำไมถึงเลือกอันนั้น","กินของหวาน 🍰 หรือของคาว 🍕 ตลอดหนึ่งวัน?"]
-    };
-    let pool=pools[state.mode]||pools[MODES[0]];
-    if(state.style==="สายฮา")pool=pool.concat(["ถ้าอีกฝ่ายเป็นมีมหนึ่งรูป จะเป็นรูปไหน?","ตั้งชื่อแก๊งของเราสองคนแบบฮา ๆ หน่อย"]);
-    if(state.style==="สายหวาน")pool=pool.concat(["ความทรงจำเล็ก ๆ เรื่องไหนที่ทำให้ยิ้มได้?","มีอะไรน่ารัก ๆ ที่อยากทำด้วยกันสักครั้ง?"]);
-    if(state.style==="สายโรแมนติก")pool=pool.concat(["ถ้ามีคืนพิเศษด้วยกัน อยากให้บรรยากาศเป็นแบบไหน?","เพลงไหนเหมาะกับเรื่องราวของเราสองคน?"]);
-    if(state.style==="สุ่มเซอร์ไพรส์")pool=pool.concat(pools[MODES[Math.floor(Math.random()*MODES.length)]]||[]);
-    return pool;
-  }
-  function modeCopy(){return ({
-    "แต่งเรื่องต่อกัน":{title:"เรื่องราวของเรา ✍️",label:"เขียนเรื่องราวต่อ",placeholder:"ช่วยกันแต่งเรื่องทีละตา…",button:"ส่งเรื่องและส่งตา 💌",banner:"ถึงตาของนายแล้ว ช่วยกันแต่งเรื่องต่อเลย ✨"},
-    "ถามตอบรู้ใจ":{title:"ถามตอบรู้ใจ 💗",label:"คำตอบของเรา",placeholder:"ตอบคำถามหรือเขียนสิ่งที่อยากให้อีกฝ่ายรู้…",button:"ส่งคำตอบ 💌",banner:"ถึงตาตอบแล้ว มาทำความรู้จักกันให้มากขึ้น 💗"},
-    "ภารกิจคู่รัก":{title:"ภารกิจของเรา 🎯",label:"รายงานภารกิจ",placeholder:"พิมพ์คำตอบหรือบอกว่าทำภารกิจสำเร็จยังไง…",button:"ส่งภารกิจ 💌",banner:"ถึงตารับภารกิจแล้ว ลุยเลย! 🎯"},
-    "ทายใจอีกฝ่าย":{title:"ทายใจอีกฝ่าย 🔮",label:"คำทายของเรา",placeholder:"เดาว่าอีกฝ่ายจะตอบอะไร พร้อมเหตุผล…",button:"ส่งคำทาย 💌",banner:"ลองทายใจอีกฝ่ายดูสิ 🔮"},
-    "เมาท์มอยไม่พัก":{title:"เมาท์มอยไม่พัก 🗣️",label:"เล่ามาได้เลย",placeholder:"คุยได้ทุกเรื่อง จะฮา จะจริงจังก็ได้…",button:"ส่งแล้วส่งตาต่อ 💌",banner:"ถึงตาเมาท์แล้ว เล่ามาให้หมด 555 😂"},
-    "เลือกอะไรดี?":{title:"เลือกอะไรดี? ⚖️",label:"ตัวเลือกของเรา",placeholder:"เลือกหนึ่งอย่างจากหัวข้อ แล้วบอกเหตุผล…",button:"ล็อกคำตอบและส่งตา 💌",banner:"เลือกคำตอบของตัวเอง แล้วมาดูว่าใจตรงกันไหม! ⚖️"}
-  })[state.mode]||{title:"เล่นด้วยกัน 💗",label:"พิมพ์คำตอบ",placeholder:"พิมพ์ข้อความตรงนี้…",button:"ส่งข้อความ 💌",banner:"ถึงตาของนายแล้ว 💗"};}
-  function applyRoom(room){state.room=room;state.turn=room.turn_player||1;unpackSettings(room.mode);state.p1=room.player1_name||"ผู้เล่น 1";state.p2=room.player2_name||"ผู้เล่น 2";state.joined=!!room.player2_token_hash||!!room.player2_name;state.story=Array.isArray(room.story)?room.story:[];render();}
-  function guessState(){
-    const entries=state.story.filter(x=>typeof x.text==="string" && /^(🔮 คำถาม:|💭 คำตอบ:|✅ ตัดสิน:|🙈 ตัดสิน:)/.test(x.text));
-    const last=entries[entries.length-1];
-    const scores=[0,0];
-    entries.forEach((x,i)=>{if(x.text.startsWith("✅ ตัดสิน:")){const answer=[...entries.slice(0,i)].reverse().find(y=>y.text.startsWith("💭 คำตอบ:"));if(answer)scores[answer.player===1?0:1]++;}});
-    let phase="question";
-    if(last?.text.startsWith("🔮 คำถาม:"))phase="answer";
-    else if(last?.text.startsWith("💭 คำตอบ:"))phase="judge";
-    else if(last?.text.startsWith("✅ ตัดสิน:")||last?.text.startsWith("🙈 ตัดสิน:"))phase="question";
-    return {phase,scores,last};
-  }
-  function render(){
-    $("roomCode").textContent=state.room?.code||"——";$("p1name").textContent=state.p1;$("p2name").textContent=state.p2;$("p2status").textContent=state.joined?"เข้าร่วมห้องแล้ว 💗":"กำลังรอเพื่อนเข้าห้อง";
-    $("p1card").classList.toggle("active",state.turn===1);$("p2card").classList.toggle("active",state.turn===2);$("count").textContent=`${state.story.length} ข้อความ`;
-    const story=$("story");story.replaceChildren();if(!state.story.length){const empty=document.createElement("div");empty.className="empty";empty.textContent=`เริ่มเล่นโหมด${state.mode} สไตล์${state.style} แล้วข้อความจะอยู่ตรงนี้ 💫`;story.append(empty);}else state.story.forEach(item=>{const bubble=document.createElement("div");bubble.className="bubble"+(item.player===2?" p2":"");const who=document.createElement("span");who.className="who";who.textContent=item.player===1?state.p1:state.p2;const body=document.createElement("span");body.textContent=item.text;bubble.append(who,body);story.append(bubble);});story.scrollTop=story.scrollHeight;
-    const c=modeCopy(),isMyTurn=state.player===state.turn;
-    const guess=guessState(),isGuess=state.mode==="ทายใจอีกฝ่าย";
-    $("guessPanel").classList.toggle("hidden",!isGuess);
-    $("score1").textContent=String(guess.scores[0]);$("score2").textContent=String(guess.scores[1]);
-    const judging=isGuess&&guess.phase==="judge"&&isMyTurn&&state.joined;
-    $("correctBtn").classList.toggle("hidden",!judging);$("wrongBtn").classList.toggle("hidden",!judging);
-    let banner=!state.joined&&state.player===1?"สร้างห้องแล้ว 💗 ส่งรหัสให้แฟนเข้าร่วมก่อนเริ่มเล่น":!isMyTurn?(state.turn===1?`รอ ${state.p1} เล่นก่อน…`:`รอ ${state.p2} เล่นก่อน…`):c.banner;
-    say("turnBanner",banner);say("feedTitle",c.title);say("draftLabel",c.label);$("draft").placeholder=c.placeholder;$("sendBtn").textContent=c.button;
-    const answerPhase=isGuess&&guess.phase==="answer";
-    $("draft").disabled=!isMyTurn||!state.joined||judging;
-    $("sendBtn").disabled=!isMyTurn||!state.joined||!$("draft").value.trim()||judging;
-    $("promptBtn").disabled=!isMyTurn||!state.joined||judging;
-    if(isGuess){
-      if(guess.phase==="question"){$("draftLabel").textContent="ตั้งคำถามให้เพื่อนทาย";$("draft").placeholder="พิมพ์คำถามที่อีกฝ่ายต้องทาย…";$("sendBtn").textContent="ส่งคำถาม 🔮";}
-      else if(answerPhase){$("draftLabel").textContent="คำทายของเรา";$("draft").placeholder="ลองทายคำตอบของอีกฝ่าย…";$("sendBtn").textContent="ส่งคำทาย 💭";}
-      else {$("draftLabel").textContent="รอผู้ตั้งคำถามตัดสิน";$("draft").placeholder="อีกฝ่ายกำลังตัดสินคำตอบ…";$("sendBtn").textContent="รอผลตัดสิน";}
-      $("guessHint").textContent=guess.phase==="question"?"ตั้งคำถามก่อน แล้วให้อีกฝ่ายทายคำตอบ":guess.phase==="answer"?"ถึงตาของอีกฝ่ายลองทายใจคุณ":"คนตั้งคำถามเลือกว่าถูกหรือยังไม่ถูกได้เลย";
+  const GAMES = [
+    "วาดปุ๊บ ทายปั๊บ 🎨",
+    "ใจตรงกันไหม? 💗",
+    "ภารกิจวัดใจ 🎯",
+    "นักสืบรู้ใจ 🔍",
+    "ศึกเมาท์มอย ⚡",
+    "เลือกแล้วลุ้น! 🎲",
+    "คู่หูไขรหัส 🧩",
+    "จำให้แม่น! 🧠",
+    "ป่วนจักรวาล ✨",
+    "สร้างโลกของเรา 🏝️"
+  ];
+  const STYLES = [
+    "สายฮา",
+    "สายหวาน",
+    "สายโรแมนติก",
+    "สุ่มเซอร์ไพรส์"
+  ];
+  const GAME_INFO = {
+    "วาดปุ๊บ ทายปั๊บ 🎨": {
+      title: "วาดปุ๊บ ทายปั๊บ 🎨",
+      description: "ผลัดกันวาดและทายสิ่งที่อีกฝ่ายคิด",
+      prompts: ["แมว", "ฟุตบอล", "ภูเขา", "ไอศกรีม", "จรวด"],
+      placeholder: "พิมพ์คำใบ้หรือคำตอบ..."
+    },
+    "ใจตรงกันไหม? 💗": {
+      title: "ใจตรงกันไหม? 💗",
+      description: "เลือกคำตอบแล้วดูว่าเราคิดเหมือนกันหรือเปล่า",
+      prompts: [
+        "ทะเล 🏖️ หรือภูเขา ⛰️",
+        "หนัง 🎬 หรือเกม 🎮",
+        "หมา 🐶 หรือแมว 🐱",
+        "กลางวัน ☀️ หรือกลางคืน 🌙",
+        "หวาน 🍰 หรือเค็ม 🍟"
+      ],
+      placeholder: "พิมพ์ตัวเลือกของตัวเอง..."
+    },
+    "ภารกิจวัดใจ 🎯": {
+      title: "ภารกิจวัดใจ 🎯",
+      description: "ทำภารกิจให้สำเร็จก่อนหมดเวลา",
+      prompts: [
+        "บอกชื่อสัตว์ 5 ชนิดใน 15 วินาที",
+        "คิดชื่อทีมของเราภายใน 10 วินาที",
+        "บอกข้อดีของอีกฝ่าย 3 ข้อ",
+        "ตั้งชื่อซูเปอร์ฮีโร่ให้ตัวเอง",
+        "คิดคำใบ้ให้เพื่อนทาย 1 คำ"
+      ],
+      placeholder: "รายงานผลภารกิจ..."
+    },
+    "นักสืบรู้ใจ 🔍": {
+      title: "นักสืบรู้ใจ 🔍",
+      description: "ตั้งปริศนาแล้วให้อีกฝ่ายหาคำตอบ",
+      prompts: [
+        "อะไรเอ่ย มีหน้าแต่ไม่มีตา?",
+        "อะไรเอ่ย ยิ่งเติมยิ่งเต็ม?",
+        "อะไรเอ่ย มีฟันแต่กินไม่ได้?",
+        "อะไรเอ่ย มีขาแต่เดินไม่ได้?",
+        "อะไรเอ่ย มีเข็มแต่เย็บผ้าไม่ได้?"
+      ],
+      placeholder: "พิมพ์คำตอบหรือปริศนา..."
+    },
+    "ศึกเมาท์มอย ⚡": {
+      title: "ศึกเมาท์มอย ⚡",
+      description: "ตอบไว คิดไว สร้างเสียงหัวเราะ",
+      prompts: [
+        "ถ้าเราเป็นตัวละครในเกม จะมีพลังอะไร?",
+        "ตั้งชื่อร้านสุดแปลกของเราสองคน",
+        "ถ้าสัตว์พูดได้ อยากคุยกับตัวอะไร?",
+        "คิดคำโฆษณาสุดฮาให้รองเท้า",
+        "ถ้าเป็นประธานห้องหนึ่งวัน จะทำอะไร?"
+      ],
+      placeholder: "ตอบให้สร้างสรรค์..."
+    },
+    "เลือกแล้วลุ้น! 🎲": {
+      title: "เลือกแล้วลุ้น! 🎲",
+      description: "เลือกหมายเลขแล้วรับโจทย์สุ่ม",
+      prompts: [
+        "โบนัส: ชมอีกฝ่าย 1 ข้อ 💗",
+        "ภารกิจ: คิดชื่อทีมใหม่ 🎯",
+        "เซอร์ไพรส์: เล่าเรื่องฮา 1 เรื่อง 😂",
+        "โบนัส: ได้ดาวเพิ่ม 1 ดวง ⭐",
+        "ท้าทาย: ตอบคำถามใน 10 วินาที ⚡"
+      ],
+      placeholder: "พิมพ์ผลที่ได้..."
+    },
+    "คู่หูไขรหัส 🧩": {
+      title: "คู่หูไขรหัส 🧩",
+      description: "ช่วยกันแก้ปริศนาและถอดรหัส",
+      prompts: [
+        "รหัส 2-1-3 หมายถึงลำดับตัวอักษรอะไร?",
+        "เรียงคำว่า ก-บ-า ให้เป็นคำ",
+        "เลขต่อไปคืออะไร: 2, 4, 6, __",
+        "หาคำที่เชื่อมโยงระหว่าง ฝน กับ ร่ม",
+        "คิดคำใบ้ให้เพื่อนทายคำลับ"
+      ],
+      placeholder: "พิมพ์คำตอบหรือคำใบ้..."
+    },
+    "จำให้แม่น! 🧠": {
+      title: "จำให้แม่น! 🧠",
+      description: "ทดสอบความจำและความเร็ว",
+      prompts: [
+        "จำลำดับนี้: 🍎 🐶 ⚽ 🌙",
+        "จำลำดับนี้: 🔑 🌸 🐱 🚀",
+        "จำลำดับนี้: ☀️ 🍕 🎮 🐼",
+        "จำลำดับนี้: 🏀 🐸 ⭐ 🍉",
+        "จำลำดับนี้: 🎈 🦊 🌈 🍰"
+      ],
+      placeholder: "พิมพ์ลำดับที่จำได้..."
+    },
+    "ป่วนจักรวาล ✨": {
+      title: "ป่วนจักรวาล ✨",
+      description: "ช่วยกันแต่งเรื่องที่คาดเดาไม่ได้",
+      prompts: [
+        "วันหนึ่งโลกทั้งใบกลายเป็นเยลลี่...",
+        "ประตูห้องเปิดออก แล้วมีมังกรตัวจิ๋ว...",
+        "เราเจอรีโมตที่หยุดเวลาได้...",
+        "จู่ ๆ ทุกคนในเมืองพูดเป็นเพลง...",
+        "ยานอวกาศลงจอดกลางสนามฟุตบอล..."
+      ],
+      placeholder: "แต่งเรื่องต่อจากอีกฝ่าย..."
+    },
+    "สร้างโลกของเรา 🏝️": {
+      title: "สร้างโลกของเรา 🏝️",
+      description: "สะสมดาวจากการเล่นและช่วยกันสร้างโลก",
+      prompts: [
+        "ถ้าเพิ่มบ้านหนึ่งหลัง จะสร้างบ้านแบบไหน?",
+        "ถ้าปลูกต้นไม้ได้หนึ่งต้น จะเลือกต้นอะไร?",
+        "ถ้าเพิ่มสถานที่เที่ยว จะสร้างที่ไหน?",
+        "ถ้าเลี้ยงสัตว์ในเกาะได้หนึ่งตัว จะเลือกอะไร?",
+        "ตั้งชื่อเกาะของเราสองคน"
+      ],
+      placeholder: "บอกไอเดียสร้างโลกของเรา..."
     }
-    $("modeSelect").value=state.mode;$("styleSelect").value=state.style;$("modeSelect").disabled=state.player!==1;$("styleSelect").disabled=state.player!==1;
-    document.querySelectorAll(".mode-card").forEach(card=>{card.classList.toggle("selected",card.dataset.mode===state.mode);card.disabled=state.player!==1;});
-    $("randomModeBtn").disabled=state.player!==1;
-    document.body.dataset.style=state.style;
+  };
+  const state = {
+    room: null,
+    player: null,
+    token: null,
+    nickname: "",
+    story: [],
+    turn: 1,
+    mode: GAMES[0],
+    style: STYLES[0],
+    p1: "ผู้เล่น 1",
+    p2: "ผู้เล่น 2",
+    joined: false,
+    pollTimer: null,
+    seconds: 30,
+    timer: null,
+    score: [0, 0],
+    usedPrompts: {},
+    lastRandom: "",
+    roundStarted: false
+  };
+  const setup = $("setup");
+  const roomView = $("room");
+  const say = (id, text) => {
+    const el = $(id);
+    if (el) el.textContent = text;
+  };
+  const configReady = () =>
+    window.SUPABASE_URL &&
+    window.SUPABASE_ANON_KEY &&
+    window.ROOM_API_URL &&
+    !window.SUPABASE_URL.includes("PASTE_");
+  const errorText = code => ({
+    room_not_found: "ไม่พบห้องนี้ ลองตรวจรหัสอีกครั้งนะ",
+    room_full: "ห้องนี้มีผู้เล่นครบ 2 คนแล้ว",
+    not_authorized: "สิทธิ์เข้าห้องไม่ถูกต้อง ลองเข้าห้องใหม่อีกครั้ง",
+    not_your_turn: "ยังไม่ถึงตาของนาย รอสักครู่นะ",
+    waiting_for_player_two: "รอผู้เล่นคนที่ 2 เข้าห้องก่อนนะ",
+    message_length: "ข้อความต้องมี 1–500 ตัวอักษร",
+    only_host_can_change_mode:
+      "เฉพาะคนสร้างห้องเท่านั้นที่เปลี่ยนเกมได้",
+    server_error: "เซิร์ฟเวอร์มีปัญหาชั่วคราว ลองอีกครั้งนะ"
+  }[code] || code || "เกิดข้อผิดพลาด ลองอีกครั้งนะ");
+  function packSettings(mode = state.mode, style = state.style) {
+    return `${mode} • ${style}`.slice(0, 60);
   }
-  async function refreshRoom(silent=true){if(!state.room||!state.token)return;try{const data=await api("get");applyRoom(data.room);}catch(e){if(!silent)setMessage(errorText(e.message));}}
-  function startPolling(){if(state.pollTimer)clearInterval(state.pollTimer);state.pollTimer=setInterval(()=>refreshRoom(true),1800);}
-  async function createRoom(){if(!configReady()){say("setupMsg","ยังตั้งค่าการเชื่อมต่อไม่ครบ");return;}state.nickname=$("nickname").value.trim()||"ผู้เล่น 1";try{const data=await api("create",{name:state.nickname,mode:packSettings(MODES[0],STYLES[0])});state.player=data.player;state.token=data.token;applyRoom(data.room);saveSession();showRoom();startPolling();history.replaceState({},"","?room="+state.room.code);setMessage("ส่งรหัส "+state.room.code+" ให้แฟนเพื่อเข้าห้องได้เลย");}catch(e){say("setupMsg",errorText(e.message));}}
-  async function joinRoom(){if(!configReady()){say("setupMsg","ยังตั้งค่าการเชื่อมต่อไม่ครบ");return;}const roomCode=$("roomInput").value.trim().toUpperCase()||new URLSearchParams(location.search).get("room")?.toUpperCase();if(!roomCode){say("setupMsg","ใส่รหัสห้องก่อนนะ");return;}state.nickname=$("nickname").value.trim()||"ผู้เล่น 2";try{const data=await api("join",{code:roomCode,name:state.nickname});state.player=data.player;state.token=data.token;applyRoom(data.room);saveSession();showRoom();startPolling();history.replaceState({},"","?room="+roomCode);}catch(e){say("setupMsg",errorText(e.message));}}
-  async function sendStory(){let text=$("draft").value.trim();if(!text||state.player!==state.turn||!state.joined)return;
-    if(state.mode==="ทายใจอีกฝ่าย"){
-      const gs=guessState();
-      if(gs.phase==="judge"){setMessage("ผู้ตั้งคำถามต้องตัดสินก่อนนะ");return;}
-      text=gs.phase==="answer"?"💭 คำตอบ: "+text:"🔮 คำถาม: "+text;
+  function unpackSettings(value) {
+    const parts = String(value || "").split(" • ");
+    state.mode = GAMES.includes(parts[0]) ? parts[0] : GAMES[0];
+    state.style = STYLES.includes(parts[1]) ? parts[1] : STYLES[0];
+  }
+  async function api(action, extra = {}) {
+    if (!configReady()) {
+      throw new Error("ยังตั้งค่าการเชื่อมต่อไม่ครบ");
     }
-    try{const data=await api("send",{text});$("draft").value="";applyRoom(data.room);setMessage("ส่งแล้ว ถึงตาอีกฝ่ายต่อเลย 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}}
-  async function judgeGuess(correct){
-    if(state.mode!=="ทายใจอีกฝ่าย"||state.player!==state.turn||!state.joined||guessState().phase!=="judge")return;
-    const text=correct?"✅ ตัดสิน: ถูก! +1 คะแนน 💗":"🙈 ตัดสิน: ยังไม่ถูก รอบหน้าลองใหม่ได้";
-    try{const data=await api("send",{text});applyRoom(data.room);setMessage(correct?"บันทึกคะแนนให้คนทายแล้ว 💗":"บันทึกผลแล้ว ไปคำถามต่อไปกัน 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}
+    const res = await fetch(window.ROOM_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: window.SUPABASE_ANON_KEY,
+        Authorization: "Bearer " + window.SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        action,
+        code: state.room?.code,
+        player: state.player,
+        token: state.token,
+        ...extra
+      })
+    });
+    const data = await res.json().catch(() => ({
+      error: "server_error"
+    }));
+    if (!res.ok) {
+      throw new Error(data.error || "server_error");
+    }
+    return data;
   }
-  async function changeSettings(){if(!state.room||state.player!==1)return;state.mode=$("modeSelect").value;state.style=$("styleSelect").value;render();try{const data=await api("mode",{mode:packSettings()});applyRoom(data.room);setMessage("เปลี่ยนโหมดและสไตล์แล้ว ทั้งคู่เห็นเหมือนกัน 💗");}catch(e){setMessage(errorText(e.message));await refreshRoom(true);}}
-  $("correctBtn").addEventListener("click",()=>judgeGuess(true));$("wrongBtn").addEventListener("click",()=>judgeGuess(false));
-  $("createBtn").addEventListener("click",createRoom);$("joinBtn").addEventListener("click",joinRoom);$("sendBtn").addEventListener("click",sendStory);$("draft").addEventListener("input",render);$("modeSelect").addEventListener("change",changeSettings);$("styleSelect").addEventListener("change",changeSettings);
-  document.querySelectorAll(".mode-card").forEach(card=>card.addEventListener("click",()=>{if(state.player!==1)return;$("modeSelect").value=card.dataset.mode;changeSettings();}));
-  $("randomModeBtn").addEventListener("click",()=>{if(state.player!==1)return;const choices=MODES.filter(m=>m!==state.mode);$("modeSelect").value=choices[Math.floor(Math.random()*choices.length)];changeSettings();});
-  $("promptBtn").addEventListener("click",()=>{const pool=prompts();$("draft").value=pool[Math.floor(Math.random()*pool.length)];render();$("draft").focus();});
-  $("copyBtn").addEventListener("click",async()=>{const url=location.origin+location.pathname+"?room="+state.room.code;try{await navigator.clipboard.writeText(url);setMessage("คัดลอกลิงก์แล้ว ส่งให้แฟนได้เลย 💌");}catch{setMessage("ลิงก์ห้อง: "+url);}});
-  $("leaveBtn").addEventListener("click",()=>{if(state.pollTimer)clearInterval(state.pollTimer);state.pollTimer=null;state.room=null;state.token=null;state.player=null;clearSession();roomView.classList.add("hidden");setup.classList.remove("hidden");history.replaceState({},"",location.pathname);});
-  const urlRoom=new URLSearchParams(location.search).get("room");if(urlRoom)$("roomInput").value=urlRoom;if(!configReady())say("setupMsg","ยังตั้งค่าการเชื่อมต่อไม่ครบ กรุณาตรวจ config.js");
+  function setMessage(text, target = "roomMsg") {
+    say(target, text);
+  }
+  function showRoom() {
+    setup.classList.add("hidden");
+    roomView.classList.remove("hidden");
+  }
+  function saveSession() {
+    try {
+      sessionStorage.setItem("knmr_room", state.room.code);
+      sessionStorage.setItem("knmr_player", String(state.player));
+      sessionStorage.setItem("knmr_token", state.token);
+    } catch {}
+  }
+  function clearSession() {
+    try {
+      sessionStorage.removeItem("knmr_room");
+      sessionStorage.removeItem("knmr_player");
+      sessionStorage.removeItem("knmr_token");
+    } catch {}
+  }
+  function randomPrompt() {
+    const pool = GAME_INFO[state.mode]?.prompts || [];
+    if (!pool.length) return "เริ่มเกมกันเลย!";
+    if (!state.usedPrompts[state.mode]) {
+      state.usedPrompts[state.mode] = [];
+    }
+    let available = pool.filter(
+      prompt => !state.usedPrompts[state.mode].includes(prompt)
+    );
+    if (!available.length) {
+      state.usedPrompts[state.mode] = [];
+      available = [...pool];
+    }
+    const prompt = available[Math.floor(Math.random() * available.length)];
+    state.usedPrompts[state.mode].push(prompt);
+    return prompt;
+  }
+  function randomGame() {
+    if (state.player !== 1) {
+      setMessage("ให้ผู้สร้างห้องเป็นคนสุ่มเกมนะ");
+      return;
+    }
+    const choices = GAMES.filter(game => game !== state.lastRandom);
+    const game = choices[Math.floor(Math.random() * choices.length)];
+    state.lastRandom = game;
+    $("modeSelect").value = game;
+    changeSettings();
+  }
+  function gameInfo() {
+    return GAME_INFO[state.mode] || GAME_INFO[GAMES[0]];
+  }
+  function applyRoom(room) {
+    state.room = room;
+    state.turn = room.turn_player || 1;
+    unpackSettings(room.mode);
+    state.p1 = room.player1_name || "ผู้เล่น 1";
+    state.p2 = room.player2_name || "ผู้เล่น 2";
+    state.joined = !!room.player2_token_hash || !!room.player2_name;
+    state.story = Array.isArray(room.story) ? room.story : [];
+    render();
+  }
+  function renderStory() {
+    const story = $("story");
+    if (!story) return;
+    story.replaceChildren();
+    if (!state.story.length) {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent =
+        `เริ่มเกม ${state.mode} แล้วข้อความจะอยู่ตรงนี้ ✨`;
+      story.append(empty);
+      return;
+    }
+    state.story.forEach(item => {
+      const bubble = document.createElement("div");
+      bubble.className =
+        "bubble" + (item.player === 2 ? " p2" : "");
+      const who = document.createElement("span");
+      who.className = "who";
+      who.textContent = item.player === 1 ? state.p1 : state.p2;
+      const body = document.createElement("span");
+      body.textContent = item.text;
+      bubble.append(who, body);
+      story.append(bubble);
+    });
+    story.scrollTop = story.scrollHeight;
+  }
+  function render() {
+    if (!state.room) return;
+    say("roomCode", state.room.code || "——");
+    say("p1name", state.p1);
+    say("p2name", state.p2);
+    say(
+      "p2status",
+      state.joined
+        ? "เข้าร่วมห้องแล้ว 💗"
+        : "กำลังรอเพื่อนเข้าห้อง"
+    );
+    $("p1card")?.classList.toggle("active", state.turn === 1);
+    $("p2card")?.classList.toggle("active", state.turn === 2);
+    say("count", `${state.story.length} รายการ`);
+    renderStory();
+    const info = gameInfo();
+    const myTurn = state.player === state.turn;
+    const ready = state.joined;
+    say("feedTitle", info.title);
+    say("draftLabel", "คำตอบหรือผลการเล่น");
+    $("draft").placeholder = info.placeholder;
+    $("sendBtn").textContent = "ส่งคำตอบ 🎮";
+    $("draft").disabled = !myTurn || !ready;
+    $("sendBtn").disabled =
+      !myTurn || !ready || !$("draft").value.trim();
+    $("promptBtn").disabled = !myTurn || !ready;
+    say(
+      "turnBanner",
+      !ready && state.player === 1
+        ? "สร้างห้องแล้ว ส่งรหัสให้เพื่อนเข้าร่วมก่อน 💗"
+        : !myTurn
+          ? `รอ${state.turn === 1 ? state.p1 : state.p2}เล่นก่อน...`
+          : info.description
+    );
+    $("modeSelect").value = state.mode;
+    $("styleSelect").value = state.style;
+    $("modeSelect").disabled = state.player !== 1;
+    $("styleSelect").disabled = state.player !== 1;
+    document.querySelectorAll(".mode-card").forEach(card => {
+      card.classList.toggle(
+        "selected",
+        card.dataset.mode === state.mode
+      );
+      card.disabled = state.player !== 1;
+    });
+    if ($("randomModeBtn")) {
+      $("randomModeBtn").disabled = state.player !== 1;
+      $("randomModeBtn").textContent = "🎰 สุ่มเกม";
+    }
+    document.body.dataset.style = state.style;
+    say("score1", String(state.score[0]));
+    say("score2", String(state.score[1]));
+  }
+  async function refreshRoom(silent = true) {
+    if (!state.room || !state.token) return;
+    try {
+      const data = await api("get");
+      applyRoom(data.room);
+    } catch (error) {
+      if (!silent) setMessage(errorText(error.message));
+    }
+  }
+  function startPolling() {
+    if (state.pollTimer) clearInterval(state.pollTimer);
+    state.pollTimer = setInterval(
+      () => refreshRoom(true),
+      1800
+    );
+  }
+  async function createRoom() {
+    if (!configReady()) {
+      say("setupMsg", "ยังตั้งค่าการเชื่อมต่อไม่ครบ");
+      return;
+    }
+    state.nickname = $("nickname").value.trim() || "ผู้เล่น 1";
+    try {
+      const data = await api("create", {
+        name: state.nickname,
+        mode: packSettings(GAMES[0], STYLES[0])
+      });
+      state.player = data.player;
+      state.token = data.token;
+      applyRoom(data.room);
+      saveSession();
+      showRoom();
+      startPolling();
+      history.replaceState(
+        {},
+        "",
+        "?room=" + state.room.code
+      );
+      setMessage(
+        "สร้างห้องแล้ว ส่งรหัส " + state.room.code +
+        " ให้เพื่อนเข้ามาเล่นได้เลย 💗"
+      );
+    } catch (error) {
+      say("setupMsg", errorText(error.message));
+    }
+  }
+  async function joinRoom() {
+    if (!configReady()) {
+      say("setupMsg", "ยังตั้งค่าการเชื่อมต่อไม่ครบ");
+      return;
+    }
+    const roomCode =
+      $("roomInput").value.trim().toUpperCase() ||
+      new URLSearchParams(location.search)
+        .get("room")?.toUpperCase();
+    if (!roomCode) {
+      say("setupMsg", "ใส่รหัสห้องก่อนนะ");
+      return;
+    }
+    state.nickname = $("nickname").value.trim() || "ผู้เล่น 2";
+    try {
+      const data = await api("join", {
+        code: roomCode,
+        name: state.nickname
+      });
+      state.player = data.player;
+      state.token = data.token;
+      applyRoom(data.room);
+      saveSession();
+      showRoom();
+      startPolling();
+      history.replaceState({}, "", "?room=" + roomCode);
+    } catch (error) {
+      say("setupMsg", errorText(error.message));
+    }
+  }
+  async function sendStory() {
+    const input = $("draft");
+    const text = input.value.trim();
+    if (!text || state.player !== state.turn || !state.joined) {
+      return;
+    }
+    try {
+      const data = await api("send", { text });
+      input.value = "";
+      applyRoom(data.room);
+      setMessage("ส่งแล้ว! ถึงตาอีกฝ่ายเล่นต่อ 🎮");
+    } catch (error) {
+      setMessage(errorText(error.message));
+      await refreshRoom(true);
+    }
+  }
+  async function changeSettings() {
+    if (!state.room || state.player !== 1) return;
+    const newMode = $("modeSelect").value;
+    const newStyle = $("styleSelect").value;
+    if (!GAMES.includes(newMode)) {
+      setMessage("ตัวเลือกเกมในหน้าเว็บยังไม่ตรงกับ app.js");
+      return;
+    }
+    state.mode = newMode;
+    state.style = STYLES.includes(newStyle)
+      ? newStyle
+      : STYLES[0];
+    render();
+    try {
+      const data = await api("mode", {
+        mode: packSettings()
+      });
+      applyRoom(data.room);
+      setMessage("เปลี่ยนเกมแล้ว ทั้งคู่เห็นเกมที่เลือก 💗");
+    } catch (error) {
+      setMessage(errorText(error.message));
+      await refreshRoom(true);
+    }
+  }
+  function startTimer(seconds = 30) {
+    if (state.timer) clearInterval(state.timer);
+    state.seconds = seconds;
+    state.roundStarted = true;
+    say("turnBanner", `เหลือเวลา ${state.seconds} วินาที ⏱️`);
+    state.timer = setInterval(() => {
+      state.seconds--;
+      if (state.seconds <= 0) {
+        clearInterval(state.timer);
+        state.timer = null;
+        state.roundStarted = false;
+        say("turnBanner", "หมดเวลาแล้ว! ส่งผลการเล่นได้เลย ⏰");
+        return;
+      }
+      say("turnBanner", `เหลือเวลา ${state.seconds} วินาที ⏱️`);
+    }, 1000);
+  }
+  $("createBtn")?.addEventListener("click", createRoom);
+  $("joinBtn")?.addEventListener("click", joinRoom);
+  $("sendBtn")?.addEventListener("click", sendStory);
+  $("draft")?.addEventListener("input", () => {
+    const button = $("sendBtn");
+    if (button) {
+      button.disabled =
+        state.player !== state.turn ||
+        !state.joined ||
+        !$("draft").value.trim();
+    }
+  });
+  $("modeSelect")?.addEventListener("change", changeSettings);
+  $("styleSelect")?.addEventListener("change", changeSettings);
+  document.querySelectorAll(".mode-card").forEach(card => {
+    card.addEventListener("click", () => {
+      if (state.player !== 1) return;
+      const selected = card.dataset.mode;
+      if (!GAMES.includes(selected)) return;
+      $("modeSelect").value = selected;
+      changeSettings();
+    });
+  });
+  $("randomModeBtn")?.addEventListener("click", randomGame);
+  $("promptBtn")?.addEventListener("click", () => {
+    if (state.player !== state.turn || !state.joined) return;
+    $("draft").value = randomPrompt();
+    render();
+    $("draft").focus();
+  });
+  $("copyBtn")?.addEventListener("click", async () => {
+    if (!state.room?.code) return;
+    const url =
+      location.origin + location.pathname +
+      "?room=" + state.room.code;
+    try {
+      await navigator.clipboard.writeText(url);
+      setMessage("คัดลอกลิงก์แล้ว ส่งให้เพื่อนได้เลย 💌");
+    } catch {
+      setMessage("ลิงก์ห้อง: " + url);
+    }
+  });
+  $("leaveBtn")?.addEventListener("click", () => {
+    if (state.pollTimer) clearInterval(state.pollTimer);
+    if (state.timer) clearInterval(state.timer);
+    state.pollTimer = null;
+    state.timer = null;
+    state.room = null;
+    state.token = null;
+    state.player = null;
+    clearSession();
+    roomView.classList.add("hidden");
+    setup.classList.remove("hidden");
+    history.replaceState({}, "", location.pathname);
+  });
+  const urlRoom =
+    new URLSearchParams(location.search).get("room");
+  if (urlRoom && $("roomInput")) {
+    $("roomInput").value = urlRoom;
+  }
+  if (!configReady()) {
+    say("setupMsg", "ยังตั้งค่าการเชื่อมต่อไม่ครบ กรุณาตรวจ config.js");
+  }
+  // เปิดฟังก์ชันสำหรับพัฒนาเกมในขั้นต่อไป
+  window.KNMR = {
+    games: GAMES,
+    gameInfo,
+    randomPrompt,
+    startTimer,
+    getState: () => ({
+      mode: state.mode,
+      style: state.style,
+      player: state.player,
+      turn: state.turn,
+      score: [...state.score]
+    })
+  };
 })();
