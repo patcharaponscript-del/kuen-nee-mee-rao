@@ -659,9 +659,9 @@
       const image = canvas.toDataURL("image/png");
       try {
         // ส่งภาพในรูปแบบข้อความเพื่อให้ผู้เล่นอีกคนเห็นในประวัติ
-        const data = await api("send", {
-          text: "[DRAW]" + image
-        });
+        const data = await api("drawing-upload", {
+  image: image
+});
         applyRoom(data.room);
         setMessage("ส่งภาพแล้ว 🎨");
         ctx.clearRect(0, 0, canvas.width, canvas.height);
