@@ -432,7 +432,31 @@
       who.className = "who";
       who.textContent = item.player === 1 ? state.p1 : state.p2;
       const body = document.createElement("span");
-      body.textContent = item.text;
+      if (item.text.startsWith("[DRAWING_URL]")) {
+  const img = document.createElement("img");
+  img.src = item.text.slice("[DRAWING_URL]".length);
+  img.alt = "ภาพวาดจากเพื่อน";
+  img.loading = "lazy";
+  img.style.display = "block";
+  img.style.maxWidth = "100%";
+  img.style.maxHeight = "360px";
+  img.style.objectFit = "contain";
+  img.style.borderRadius = "12px";
+  img.style.marginTop = "8px";
+  img.style.background = "#fff";
+  body.appendChild(img);
+} else if (item.text.startsWith("[DRAWING_UNAVAILABLE]")) {
+  body.textContent = "ไม่สามารถแสดงภาพวาดนี้ได้";
+} else if (item.text.startsWith("[DRAW]data:image/")) {
+  const img = document.createElement("img");
+  img.src = item.text.slice("[DRAW]".length);
+  img.alt = "ภาพวาดจากเพื่อน";
+  img.style.maxWidth = "100%";
+  img.style.maxHeight = "360px";
+  body.appendChild(img);
+} else {
+  body.textContent = item.text;
+}
       bubble.append(who, body);
       story.append(bubble);
     });
