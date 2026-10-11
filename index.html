@@ -1,85 +1,200 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#fff0f7">
-  <meta name="description" content="คืนนี้มีเรา — เกมแต่งเรื่องและเล่นด้วยกันสองคน">
-  <title>คืนนี้มีเรา 💗</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eef8ff">
+  <meta name="description" content="คืนนี้มีเรา 💙 รวมเกมสนุก ๆ สำหรับเล่นด้วยกัน">
+  <title>คืนนี้มีเรา 💙</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="stars"></div>
+  <header class="site-header">
+    <div class="brand">คืนนี้มีเรา <span>💙</span></div>
+    <p>พื้นที่เล็ก ๆ สำหรับความสนุกของเราสองคน ☁️</p>
+  </header>
   <main class="app">
-    <header class="brand">
-      <div class="logo">♡</div>
-      <div><h1>คืนนี้มีเรา</h1><p>เรื่องราวเล็ก ๆ ของเราสองคน</p></div>
-      <span class="pill">PARTY</span>
-    </header>
-
+    <!-- หน้าสร้างและเข้าร่วมห้อง -->
     <section id="setup" class="panel">
-      <div class="eyebrow">TWO HEARTS · ONE ROOM</div>
-      <h2>คืนนี้เล่นอะไรกันดี? 🌙</h2>
-      <p class="muted">สร้างห้องใหม่ หรือใส่รหัสเพื่อเข้าห้องของอีกคน</p>
-      <label for="nickname">ชื่อที่ใช้ในเกม</label>
-      <input id="nickname" maxlength="20" placeholder="เช่น คนเก่ง 💗" autocomplete="nickname">
-      <div class="actions">
-        <button id="createBtn" class="primary">สร้างห้องใหม่ ✨</button>
-      </div>
-      <div class="join">
-        <label for="roomInput">มีรหัสห้องแล้วใช่ไหม?</label>
-        <div class="inline"><input id="roomInput" maxlength="8" placeholder="ใส่รหัสห้อง"><button id="joinBtn" class="secondary">เข้าห้อง</button></div>
-      </div>
-      <p id="setupMsg" class="message" aria-live="polite"></p>
-      <p class="tiny">ต้องตั้งค่า Supabase ในไฟล์ config.js ก่อนใช้งานข้ามเครื่อง</p>
+      <p class="eyebrow">WELCOME TO OUR WORLD</p>
+      <h1>คืนนี้มาเล่นด้วยกันไหม? 💙</h1>
+      <p>เลือกชื่อ สร้างห้อง แล้วชวนอีกคนมาเล่นด้วยกัน</p>
+      <label for="nickname">ชื่อของคุณ</label>
+      <input
+        id="nickname"
+        type="text"
+        maxlength="30"
+        placeholder="พิมพ์ชื่อเล่นของคุณ"
+        autocomplete="nickname"
+      >
+      <button id="createBtn" type="button">
+        ✨ สร้างห้องใหม่
+      </button>
+      <div class="separator"><span>หรือเข้าห้องที่มีอยู่</span></div>
+      <label for="roomInput">รหัสห้อง</label>
+      <input
+        id="roomInput"
+        type="text"
+        maxlength="20"
+        placeholder="ใส่รหัสห้องของอีกฝ่าย"
+        autocomplete="off"
+      >
+      <button id="joinBtn" type="button" class="secondary">
+        💌 เข้าร่วมห้อง
+      </button>
+      <p id="setupMsg" class="message" role="status" aria-live="polite"></p>
     </section>
-
+    <!-- หน้าห้องเกม -->
     <section id="room" class="hidden">
-      <div class="panel room-head">
-        <div><div class="eyebrow">ห้องของเราสองคน</div><h2>รหัส <span id="roomCode">——</span></h2></div>
-        <button id="copyBtn" class="secondary small">คัดลอกลิงก์</button>
-      </div>
-      <div class="panel">
-        <div class="players">
-          <div id="p1card" class="player-card active"><span class="avatar">🌙</span><div><b id="p1name">ผู้เล่น 1</b><small id="p1status">เจ้าของห้อง</small></div></div>
-          <div id="p2card" class="player-card"><span class="avatar">⭐</span><div><b id="p2name">ผู้เล่น 2</b><small id="p2status">กำลังรอเพื่อนเข้าห้อง</small></div></div>
+      <!-- ข้อมูลห้อง -->
+      <section class="panel room-heading">
+        <div>
+          <p class="eyebrow">OUR LITTLE WORLD</p>
+          <h1>ห้องของเราสองคน 💙</h1>
+          <p>รหัสห้อง <strong id="roomCode">——</strong></p>
         </div>
-        <div class="game-settings">
-          <div class="mode mode-picker">
-            <div class="picker-heading"><label>🎮 เลือกโหมดที่อยากเล่น</label><button id="randomModeBtn" class="secondary small" type="button">🎲 สุ่มโหมด</button></div>
-            <div id="modeGrid" class="mode-grid" aria-label="เลือกโหมดเกม">
-              <button class="mode-card" data-mode="แต่งเรื่องต่อกัน" type="button"><span>📖</span><b>สร้างเรื่องด้วยกัน</b><small>ผลัดกันแต่งเรื่องทีละตา</small></button>
-              <button class="mode-card" data-mode="ทายใจอีกฝ่าย" type="button"><span>🔮</span><b>ทายใจแฟน</b><small>ลองเดาคำตอบของอีกฝ่าย</small></button>
-              <button class="mode-card" data-mode="ถามตอบรู้ใจ" type="button"><span>💬</span><b>ถามตอบรู้ใจ</b><small>คุยกันและรู้จักกันมากขึ้น</small></button>
-              <button class="mode-card" data-mode="ภารกิจคู่รัก" type="button"><span>🎯</span><b>สุ่มภารกิจ</b><small>ภารกิจสนุก ๆ ผ่านมือถือ</small></button>
-              <button class="mode-card" data-mode="เมาท์มอยไม่พัก" type="button"><span>🌙</span><b>คำถามลึกซึ้ง</b><small>คุยเรื่องใจแบบสบาย ๆ</small></button>
-              <button class="mode-card" data-mode="เลือกอะไรดี?" type="button"><span>🩷</span><b>เลือกอะไรดี?</b><small>เลือกหนึ่งในสองตัวเลือก</small></button>
-            </div>
-            <select id="modeSelect" class="visually-hidden" aria-hidden="true" tabindex="-1"><option>แต่งเรื่องต่อกัน</option><option>ถามตอบรู้ใจ</option><option>ภารกิจคู่รัก</option><option>ทายใจอีกฝ่าย</option><option>เมาท์มอยไม่พัก</option><option>เลือกอะไรดี?</option></select>
-          </div>
-          <div class="mode">
-            <label for="styleSelect">🎨 สไตล์การเล่น</label>
-            <select id="styleSelect">
-              <option>สายฮา</option><option>สายหวาน</option><option>สายโรแมนติก</option><option>สุ่มเซอร์ไพรส์</option>
-            </select>
-          </div>
-          <p class="tiny">คนสร้างห้องเป็นคนเลือก และทั้งสองคนจะเห็นตัวเลือกเดียวกัน 💗</p>
+        <button id="copyBtn" type="button" class="secondary">
+          🔗 คัดลอกลิงก์ห้อง
+        </button>
+      </section>
+      <!-- การ์ดผู้เล่น -->
+      <section class="players" aria-label="ผู้เล่น">
+        <article id="p1card" class="player-card">
+          <div class="player-avatar">🐳</div>
+          <strong id="p1name">ผู้เล่น 1</strong>
+          <span>ผู้สร้างห้อง</span>
+          <div class="score">⭐ <span id="score1">0</span></div>
+        </article>
+        <article id="p2card" class="player-card">
+          <div class="player-avatar">🐬</div>
+          <strong id="p2name">ผู้เล่น 2</strong>
+          <span id="p2status">กำลังรออีกคนเข้าห้อง</span>
+          <div class="score">⭐ <span id="score2">0</span></div>
+        </article>
+      </section>
+      <!-- เลือกเกม -->
+      <section class="panel">
+        <p class="eyebrow">PICK YOUR ADVENTURE</p>
+        <h2>วันนี้เล่นอะไรดี? 🎮</h2>
+        <p>เลือกเกมที่ชอบ หรือกดสุ่มให้เว็บเลือกแทนก็ได้</p>
+        <label for="modeSelect">เลือกเกม</label>
+        <select id="modeSelect">
+          <option value="วาดปุ๊บ ทายปั๊บ 🎨">🎨 วาดปุ๊บ ทายปั๊บ</option>
+          <option value="ใจตรงกันไหม? 💗">💗 ใจตรงกันไหม?</option>
+          <option value="ภารกิจวัดใจ 🎯">🎯 ภารกิจวัดใจ</option>
+          <option value="นักสืบรู้ใจ 🔍">🔍 นักสืบรู้ใจ</option>
+          <option value="ศึกเมาท์มอย ⚡">⚡ ศึกเมาท์มอย</option>
+          <option value="เลือกแล้วลุ้น! 🎲">🎲 เลือกแล้วลุ้น!</option>
+          <option value="คู่หูไขรหัส 🧩">🧩 คู่หูไขรหัส</option>
+          <option value="จำให้แม่น! 🧠">🧠 จำให้แม่น!</option>
+          <option value="ป่วนจักรวาล ✨">✨ ป่วนจักรวาล</option>
+          <option value="สร้างโลกของเรา 🏝️">🏝️ สร้างโลกของเรา</option>
+        </select>
+        <label for="styleSelect">สไตล์เกม</label>
+        <select id="styleSelect">
+          <option value="สายฮา">🤣 สายฮา</option>
+          <option value="สายหวาน">💙 สายหวาน</option>
+          <option value="สายโรแมนติก">🌙 สายโรแมนติก</option>
+          <option value="สุ่มเซอร์ไพรส์">🎁 สุ่มเซอร์ไพรส์</option>
+        </select>
+        <button id="randomModeBtn" type="button">
+          🎰 สุ่มเกมให้หน่อย!
+        </button>
+        <div class="game-grid">
+          <button type="button" class="mode-card"
+            data-mode="วาดปุ๊บ ทายปั๊บ 🎨">
+            🎨 <span>วาดปุ๊บ ทายปั๊บ</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="ใจตรงกันไหม? 💗">
+            💗 <span>ใจตรงกันไหม?</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="ภารกิจวัดใจ 🎯">
+            🎯 <span>ภารกิจวัดใจ</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="นักสืบรู้ใจ 🔍">
+            🔍 <span>นักสืบรู้ใจ</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="ศึกเมาท์มอย ⚡">
+            ⚡ <span>ศึกเมาท์มอย</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="เลือกแล้วลุ้น! 🎲">
+            🎲 <span>เลือกแล้วลุ้น!</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="คู่หูไขรหัส 🧩">
+            🧩 <span>คู่หูไขรหัส</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="จำให้แม่น! 🧠">
+            🧠 <span>จำให้แม่น!</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="ป่วนจักรวาล ✨">
+            ✨ <span>ป่วนจักรวาล</span>
+          </button>
+          <button type="button" class="mode-card"
+            data-mode="สร้างโลกของเรา 🏝️">
+            🏝️ <span>สร้างโลกของเรา</span>
+          </button>
         </div>
-        <div id="turnBanner" class="turn-banner">กำลังเชื่อมต่อห้อง…</div>
-        <div id="guessPanel" class="guess-panel hidden" aria-live="polite"><div class="guess-score"><span>🌙 <b id="score1">0</b></span><span>⭐ <b id="score2">0</b></span></div><p id="guessHint">โหมดทายใจ: ตั้งคำถาม แล้วให้อีกฝ่ายลองทาย</p><div class="judge-actions"><button id="correctBtn" class="primary" type="button">ถูก! +1 💗</button><button id="wrongBtn" class="secondary" type="button">ยังไม่ถูก 🙈</button></div></div>
-      </div>
-      <div class="panel">
-        <div class="story-head"><h3 id="feedTitle">เรื่องราวของเรา ✍️</h3><span id="count" class="pill">0 ข้อความ</span></div>
-        <div id="story" class="story"><div class="empty">เมื่อเริ่มแต่งเรื่อง ข้อความของเราจะอยู่ตรงนี้ 💫</div></div>
-        <label id="draftLabel" for="draft">เขียนต่อจากเรื่องราว</label>
-        <textarea id="draft" rows="3" maxlength="500" placeholder="พิมพ์เรื่องราวของคุณตรงนี้…"></textarea>
-        <div class="draft-actions"><button id="promptBtn" class="secondary" type="button">🎲 สุ่มหัวข้อช่วยคิด</button><button id="sendBtn" class="primary" disabled>ส่งข้อความและส่งตา 💌</button></div>
-        <p id="roomMsg" class="message" aria-live="polite"></p>
-      </div>
-      <button id="leaveBtn" class="link-button">ออกจากหน้าห้อง</button>
+      </section>
+      <!-- สถานะตาเล่น -->
+      <section class="panel">
+        <p class="eyebrow">LET'S PLAY</p>
+        <h2 id="feedTitle">เกมของเรา 💙</h2>
+        <div id="turnBanner" role="status" aria-live="polite">
+          เตรียมตัวให้พร้อม แล้วเริ่มสนุกกันเลย!
+        </div>
+        <p id="count">0 รายการ</p>
+        <!-- ประวัติการเล่น -->
+        <div id="story" aria-live="polite">
+          <div class="empty">
+            เรื่องราวและคำตอบของเราจะอยู่ตรงนี้ ✨
+          </div>
+        </div>
+        <!-- พื้นที่เกมทายใจเดิมและคะแนน -->
+        <div id="guessPanel" class="hidden">
+          <p id="guessHint">เล่นเกมและสะสมคะแนนไปด้วยกัน</p>
+          <button id="correctBtn" type="button">
+            ✅ ถูกต้อง
+          </button>
+          <button id="wrongBtn" type="button">
+            🙈 ยังไม่ถูก
+          </button>
+        </div>
+        <!-- ส่งคำตอบ -->
+        <label id="draftLabel" for="draft">
+          คำตอบหรือผลการเล่น
+        </label>
+        <textarea
+          id="draft"
+          maxlength="500"
+          rows="4"
+          placeholder="พิมพ์คำตอบหรือเล่าเรื่องของคุณ..."
+        ></textarea>
+        <button id="promptBtn" type="button">
+          🎲 สุ่มโจทย์
+        </button>
+        <button id="sendBtn" type="button">
+          💌 ส่งคำตอบ
+        </button>
+        <p id="roomMsg" class="message" role="status" aria-live="polite"></p>
+      </section>
+      <!-- ออกจากห้อง -->
+      <button id="leaveBtn" type="button">
+        ออกจากห้อง
+      </button>
     </section>
-    <footer>ทำด้วยความตั้งใจเพื่อคนสองคน 💗</footer>
   </main>
+  <footer class="site-footer">
+    <p>ทำให้ทุกคืนมีเรื่องราวดี ๆ ของเรา 💙</p>
+  </footer>
+  <!-- โหลดค่าการเชื่อมต่อก่อน แล้วค่อยโหลดแอป -->
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
